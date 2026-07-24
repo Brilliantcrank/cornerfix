@@ -1,0 +1,5 @@
+.build/
+CornerFix.app/
+pkgroot/
+*.pkg
+.DS_Store

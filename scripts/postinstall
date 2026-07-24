@@ -1,0 +1,37 @@
+#!/bin/bash
+set -euo pipefail
+
+CONSOLE_USER=$(stat -f "%Su" /dev/console)
+USER_HOME=$(dscl . -read "/Users/$CONSOLE_USER" NFSHomeDirectory | awk '{print $2}')
+USER_UID=$(id -u "$CONSOLE_USER")
+
+LAUNCH_AGENTS_DIR="$USER_HOME/Library/LaunchAgents"
+PLIST_PATH="$LAUNCH_AGENTS_DIR/com.airbagindustries.cornerfix.plist"
+
+mkdir -p "$LAUNCH_AGENTS_DIR"
+chown "$CONSOLE_USER" "$LAUNCH_AGENTS_DIR"
+
+cat > "$PLIST_PATH" << 'PLIST'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.airbagindustries.cornerfix</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Applications/CornerFix.app/Contents/MacOS/CornerFix</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+</dict>
+</plist>
+PLIST
+
+chown "$CONSOLE_USER" "$PLIST_PATH"
+chmod 644 "$PLIST_PATH"
+
+launchctl asuser "$USER_UID" launchctl bootout "gui/$USER_UID" "$PLIST_PATH" >/dev/null 2>&1 || true
+launchctl asuser "$USER_UID" launchctl bootstrap "gui/$USER_UID" "$PLIST_PATH" >/dev/null 2>&1 || true
+
+exit 0
